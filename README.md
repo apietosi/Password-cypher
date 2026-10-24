@@ -12,6 +12,22 @@ Forget a password? Open the page, type your phrase and the website again, and th
 4. **The website:** type the site name or paste its web address. `https://www.amazon.com/login` and `amazon.com` give the same password.
 5. Copy the password and paste it into the site.
 
+## Put it on your phone as an app
+
+The page can be installed on your home screen and works with no signal.
+
+**One-time setup (turn on the free website):**
+1. On GitHub, open this repository and go to **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
+3. Pick the branch that holds `index.html` and the **/ (root)** folder, then press **Save**.
+4. Wait a minute or two. The page shows your link, normally `https://apietosi.github.io/Password-cypher/`.
+
+**Install it:**
+- **Android (Chrome):** open the link, tap **⋮**, then **Install app** (or **Add to Home screen**).
+- **iPhone (Safari):** open the link, tap **Share**, then **Add to Home Screen**.
+
+Open it once while online. After that it works anywhere. To use a password, tap **Copy password**, then long-press the password box in the website or app and tap **Paste**.
+
 ## When a site gets hacked or asks for a new password
 
 Raise that site's **version** from 1 to 2 and you get a brand-new password for that site only. Press "Remember this site's settings" so the page remembers the version for you. You can also write the "recipe" line down, since it contains nothing secret.

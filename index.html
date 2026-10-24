@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Password Cypher</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column of numbered steps (key -> website -> password), saved sites and an explainer below. */
+:root {
+  --bg: #eceff3;
+  --surface: #ffffff;
+  --ink: #16202b;
+  --muted: #566372;
+  --line: #d2d9e1;
+  --accent: #8a5d10;       /* brass, like a cut key */
+  --accent-soft: #f4e7cf;
+  --digit: #1f5fa8;
+  --symbol: #a3361f;
+  --good: #2c7a4b;
+  --warn: #9a6a00;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f151c; --surface: #17202a; --ink: #e6ecf2; --muted: #95a3b2; --line: #2b3744;
+    --accent: #e3ad4c; --accent-soft: #3a2d15; --digit: #79b2f2; --symbol: #f0937c;
+    --good: #6cc792; --warn: #e6b84f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f151c; --surface: #17202a; --ink: #e6ecf2; --muted: #95a3b2; --line: #2b3744;
+  --accent: #e3ad4c; --accent-soft: #3a2d15; --digit: #79b2f2; --symbol: #f0937c;
+  --good: #6cc792; --warn: #e6b84f; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 16px/1.55 var(--font-body);
+}
+.wrap {
+  max-width: 660px;
+  margin: 0 auto;
+  padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+header h1 {
+  font: 800 clamp(2rem, 6vw, 2.8rem)/1.05 var(--font-display);
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+  text-wrap: balance;
+}
+header h1 span { color: var(--accent); }
+header p { margin: 0; color: var(--muted); max-width: 60ch; }
+
+.step {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.step-head { display: flex; align-items: baseline; gap: 12px; }
+.step-num {
+  font: 700 0.8rem var(--font-mono);
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  border-radius: 999px;
+  width: 26px; height: 26px;
+  display: inline-grid; place-items: center;
+  flex: none;
+}
+.step h2 { font: 600 1.25rem/1.2 var(--font-display); margin: 0; }
+.step-head p { margin: 2px 0 0; color: var(--muted); font-size: 0.92rem; }
+
+label.field { display: flex; flex-direction: column; gap: 6px; }
+.label-text {
+  font-size: 0.78rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted);
+}
+.hint { font-size: 0.85rem; color: var(--muted); }
+input[type="text"], input[type="password"], input[type="number"] {
+  font: 500 1rem var(--font-body);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 12px;
+  width: 100%;
+  min-width: 0;
+}
+input:focus-visible, button:focus-visible, .chip input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .row { grid-template-columns: 1fr; } }
+.with-btn { display: flex; gap: 8px; }
+.with-btn input { flex: 1; }
+
+button {
+  font: 600 0.92rem var(--font-body);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+button.primary:hover { filter: brightness(1.08); }
+
+.keycheck {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+}
+.keycheck strong { font-family: var(--font-mono); color: var(--accent); }
+.meter { font-size: 0.85rem; font-weight: 600; }
+.meter.weak { color: var(--symbol); }
+.meter.ok { color: var(--warn); }
+.meter.strong { color: var(--good); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip span {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+.chip span code { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
+.chip input:checked + span { border-color: var(--accent); background: var(--accent-soft); }
+.chip input:checked + span::before { content: "✓"; color: var(--accent); font-weight: 700; }
+
+.length-row { display: flex; align-items: center; gap: 12px; }
+.length-row input[type="range"] { flex: 1; accent-color: var(--accent); min-width: 0; }
+.length-row output { font: 700 1.1rem var(--font-mono); min-width: 2.5ch; text-align: right; }
+
+.version { display: flex; align-items: center; gap: 8px; }
+.version input { width: 5.5em; text-align: center; font-family: var(--font-mono); }
+
+.result { border-color: var(--accent); border-width: 1.5px; }
+.pw {
+  font: 700 clamp(1.15rem, 4.6vw, 1.6rem)/1.3 var(--font-mono);
+  letter-spacing: 0.04em;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-wrap: anywhere;
+  min-height: 3.4em;
+  display: flex; align-items: center;
+}
+.pw.placeholder { font: 500 0.95rem var(--font-body); color: var(--muted); letter-spacing: 0; }
+.pw .d { color: var(--digit); }
+.pw .s { color: var(--symbol); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.status { font-size: 0.88rem; color: var(--good); min-height: 1.3em; }
+.recipe {
+  font: 500 0.85rem var(--font-mono);
+  color: var(--muted);
+  border-top: 1px dashed var(--line);
+  padding-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+.saved ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.saved li {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+}
+.saved li:last-child { border-bottom: 0; }
+.saved .site-name { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
+.saved .site-meta { font: 500 0.8rem var(--font-mono); color: var(--muted); }
+.saved .li-btns { display: flex; gap: 6px; flex: none; }
+.saved .li-btns button { padding: 6px 10px; font-size: 0.85rem; }
+.empty { color: var(--muted); font-size: 0.92rem; margin: 0; }
+
+.explain h2 { font: 600 1.25rem var(--font-display); margin: 0; }
+.explain ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 8px; max-width: 62ch; }
+.explain p { margin: 0; max-width: 62ch; }
+.explain .warn { color: var(--ink); background: var(--accent-soft); padding: 12px 14px; border-radius: 8px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .pw { transition: background-color 0.2s; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Password <span>Cypher</span></h1>
+    <p>One secret phrase you remember, plus the website's name, makes a strong, unique password for every site. Forget a password? Type the same things in and the same password comes back out. Nothing is saved or sent anywhere.</p>
+  </header>
+
+  <!-- Step 1: the key -->
+  <section class="step" aria-labelledby="h-key">
+    <div class="step-head">
+      <span class="step-num">1</span>
+      <div>
+        <h2 id="h-key">Your key</h2>
+        <p>Set this once and keep it the same forever.</p>
+      </div>
+    </div>
+
+    <label class="field">
+      <span class="label-text">Master phrase</span>
+      <div class="with-btn">
+        <input id="master" type="password" autocomplete="off" spellcheck="false"
+               placeholder="e.g. four random words you'll never forget">
+        <button id="toggle-master" type="button" aria-pressed="false">Show</button>
+      </div>
+      <span class="hint">This is the only thing you must memorize. Never write it on a website or give it to anyone. <span id="meter" class="meter"></span></span>
+    </label>
+
+    <div class="keycheck" id="keycheck" hidden>
+      <span>Key check:</span> <strong id="keycheck-value"></strong>
+      <span class="hint">Remember this. If it ever looks different, you mistyped your phrase.</span>
+    </div>
+
+    <div class="field">
+      <span class="label-text">Characters to use</span>
+      <div class="chips" role="group" aria-label="Characters to use">
+        <label class="chip"><input type="checkbox" id="set-upper" checked><span>Capitals <code>ABC</code></span></label>
+        <label class="chip"><input type="checkbox" id="set-lower" checked><span>Lowercase <code>abc</code></span></label>
+        <label class="chip"><input type="checkbox" id="set-digits" checked><span>Numbers <code>123</code></span></label>
+        <label class="chip"><input type="checkbox" id="set-symbols" checked><span>Symbols <code>#$%</code></span></label>
+        <label class="chip"><input type="checkbox" id="avoid-lookalikes" checked><span>Skip look-alikes <code>0 O 1 l I</code></span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label-text">Length</span>
+      <div class="length-row">
+        <input id="length" type="range" min="8" max="32" value="16" aria-label="Password length">
+        <output id="length-out" for="length">16</output>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 2: the website -->
+  <section class="step" aria-labelledby="h-site">
+    <div class="step-head">
+      <span class="step-num">2</span>
+      <div>
+        <h2 id="h-site">The website</h2>
+        <p>Type it or paste the web address. Only the main name is used.</p>
+      </div>
+    </div>
+
+    <label class="field">
+      <span class="label-text">Website</span>
+      <input id="site" type="text" autocomplete="off" spellcheck="false" value="amazon.com"
+             placeholder="amazon.com">
+      <span class="hint" id="site-used"></span>
+    </label>
+
+    <div class="row">
+      <label class="field">
+        <span class="label-text">Username (optional)</span>
+        <input id="user" type="text" autocomplete="off" spellcheck="false" placeholder="only if you have 2+ accounts">
+      </label>
+      <div class="field">
+        <span class="label-text" id="version-label">Version</span>
+        <div class="version">
+          <button type="button" id="ver-down" aria-label="Lower version">−</button>
+          <input id="version" type="number" min="1" max="999" value="1" aria-labelledby="version-label">
+          <button type="button" id="ver-up" aria-label="Raise version">+</button>
+        </div>
+        <span class="hint">Site got hacked or wants a new password? Press +.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 3: the result -->
+  <section class="step result" aria-labelledby="h-out" aria-live="polite">
+    <div class="step-head">
+      <span class="step-num">3</span>
+      <div>
+        <h2 id="h-out">Your password</h2>
+        <p><span style="color:var(--digit)">Blue</span> = number, <span style="color:var(--symbol)">red</span> = symbol, to make reading it easier.</p>
+      </div>
+    </div>
+    <div class="pw placeholder" id="pw">Type your master phrase above to see the password.</div>
+    <div class="actions">
+      <button class="primary" type="button" id="copy" disabled>Copy password</button>
+      <button type="button" id="hide" aria-pressed="false" disabled>Hide</button>
+      <button type="button" id="save" disabled>Remember this site's settings</button>
+      <button type="button" id="lock">Lock (clear phrase)</button>
+    </div>
+    <div class="status" id="status" role="status"></div>
+    <div class="recipe" id="recipe"></div>
+  </section>
+
+  <!-- Saved sites: settings only, never passwords -->
+  <section class="step saved" aria-labelledby="h-saved">
+    <div class="step-head">
+      <div>
+        <h2 id="h-saved">Saved sites</h2>
+        <p>Only settings like version and length are kept, on this device. Passwords and your phrase are never stored.</p>
+      </div>
+    </div>
+    <ul id="saved-list"></ul>
+    <p class="empty" id="saved-empty">No saved sites yet. Press “Remember this site's settings” after making a password.</p>
+  </section>
+
+  <section class="step explain" aria-labelledby="h-how">
+    <h2 id="h-how">How it works</h2>
+    <ol>
+      <li>Your master phrase and the website name are mixed together with a one-way scrambler (the same kind banks use). It's slow on purpose so hackers can't guess millions of phrases a second.</li>
+      <li>The result is turned into a password using the characters and length you picked. Same inputs, same password, every time, on any device.</li>
+      <li>Each website gets a totally different password. If one site leaks, the others are still safe, and nobody can work backwards to your master phrase.</li>
+      <li>When a site needs a new password, raise its version from 1 to 2. You only need to remember which sites you bumped, and “Saved sites” can do that for you.</li>
+    </ol>
+    <p class="warn"><strong>Keep the settings in step 1 the same forever.</strong> Changing the length or characters changes every password. If one site has weird rules (like “no symbols”), change it just for that site and press “Remember this site's settings”.</p>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+
+// ---- Fixed recipe. Changing anything here changes every password ever made. ----
+const VERSION_TAG = "password-cypher/v1";
+const ITERATIONS = 300000;
+const SETS = {
+  upper:   "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  lower:   "abcdefghijklmnopqrstuvwxyz",
+  digits:  "0123456789",
+  symbols: "!#$%&*+-=?@^_"   // only symbols nearly every website accepts
+};
+const LOOKALIKES = "0O1lI";
+const KEYCHECK_COLORS = ["Amber","Azure","Black","Bronze","Coral","Crimson","Gold","Green",
+  "Indigo","Ivory","Jade","Lemon","Lilac","Navy","Olive","Orange","Pink","Plum","Ruby","Rust",
+  "Silver","Teal","Violet","White"];
+const KEYCHECK_ANIMALS = ["Badger","Bear","Bison","Crane","Crow","Deer","Eagle","Falcon","Fox",
+  "Frog","Goat","Hawk","Heron","Horse","Lion","Lynx","Moose","Otter","Owl","Panda","Raven",
+  "Seal","Shark","Tiger","Turtle","Whale","Wolf","Yak"];
+
+const enc = new TextEncoder();
+const $ = (id) => document.getElementById(id);
+
+// Turn "https://www.Amazon.co.uk/login?x=1" into "amazon.co.uk".
+function normalizeSite(raw) {
+  let s = raw.trim().toLowerCase();
+  s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");   // scheme
+  s = s.replace(/^[^/@]*@/, "");                   // user@ in URLs
+  s = s.split(/[/?#:]/)[0];                        // path, query, port
+  s = s.replace(/\.+$/, "");
+  const parts = s.split(".").filter(Boolean);
+  if (parts.length <= 2) return parts.join(".");
+  // Keep the last three parts for addresses like amazon.co.uk or abc.com.au.
+  const secondLevel = ["co", "com", "net", "org", "gov", "edu", "ac", "or", "ne", "go"];
+  const tld = parts[parts.length - 1];
+  const sld = parts[parts.length - 2];
+  const keep = (tld.length === 2 && secondLevel.includes(sld)) ? 3 : 2;
+  return parts.slice(-keep).join(".");
+}
+
+async function sha256(text) {
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(text)));
+}
+
+// A short, friendly fingerprint of the master phrase, so typos are easy to spot.
+async function keyCheck(master) {
+  const h = await sha256(VERSION_TAG + "/keycheck\n" + master);
+  const color = KEYCHECK_COLORS[h[0] % KEYCHECK_COLORS.length];
+  const animal = KEYCHECK_ANIMALS[h[1] % KEYCHECK_ANIMALS.length];
+  return `${color} ${animal} ${h[2] % 100}`;
+}
+
+// Endless stream of deterministic bytes: HMAC-SHA256(seed, block number).
+async function byteStream(seed) {
+  const key = await crypto.subtle.importKey("raw", seed, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  let buf = new Uint8Array(0), pos = 0, block = 0;
+  return async function nextByte() {
+    if (pos >= buf.length) {
+      const counter = new Uint8Array(4);
+      new DataView(counter.buffer).setUint32(0, block++);
+      buf = new Uint8Array(await crypto.subtle.sign("HMAC", key, counter));
+      pos = 0;
+    }
+    return buf[pos++];
+  };
+}
+
+// Unbiased number from 0 to n-1 (rejects values that would favor some characters).
+async function randInt(next, n) {
+  const limit = Math.floor(65536 / n) * n;
+  while (true) {
+    const v = ((await next()) << 8) | (await next());
+    if (v < limit) return v % n;
+  }
+}
+
+async function makePassword({ master, site, user, version, length, sets, avoid }) {
+  const alphabets = Object.keys(SETS)
+    .filter((k) => sets[k])
+    .map((k) => avoid ? [...SETS[k]].filter((c) => !LOOKALIKES.includes(c)).join("") : SETS[k]);
+  const all = alphabets.join("");
+
+  const salt = [VERSION_TAG, site, user.trim().toLowerCase(), version, length,
+    Object.keys(SETS).filter((k) => sets[k]).join(","), avoid ? "avoid" : "keep"].join("\n");
+  const baseKey = await crypto.subtle.importKey("raw", enc.encode(master), "PBKDF2", false, ["deriveBits"]);
+  const seed = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: enc.encode(salt), iterations: ITERATIONS, hash: "SHA-256" }, baseKey, 256);
+
+  const next = await byteStream(seed);
+  const chars = [];
+  for (const a of alphabets) chars.push(a[await randInt(next, a.length)]);   // at least one of each type
+  while (chars.length < length) chars.push(all[await randInt(next, all.length)]);
+  for (let i = chars.length - 1; i > 0; i--) {                              // shuffle
+    const j = await randInt(next, i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
+// ---- Saved site settings (never secrets) ----
+const STORE_KEY = "password-cypher-sites";
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; }
+}
+function writeSaved(data) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); return true; } catch { return false; }
+}
+
+// ---- UI ----
+let currentPassword = "";
+let hidden = false;
+let runId = 0;
+let timer = null;
+
+function readForm() {
+  return {
+    master: $("master").value,
+    site: normalizeSite($("site").value),
+    user: $("user").value,
+    version: Math.max(1, parseInt($("version").value, 10) || 1),
+    length: parseInt($("length").value, 10),
+    sets: {
+      upper: $("set-upper").checked, lower: $("set-lower").checked,
+      digits: $("set-digits").checked, symbols: $("set-symbols").checked
+    },
+    avoid: $("avoid-lookalikes").checked
+  };
+}
+
+function recipeText(f) {
+  const types = [f.sets.upper && "ABC", f.sets.lower && "abc", f.sets.digits && "123", f.sets.symbols && "#$%"]
+    .filter(Boolean).join(" ");
+  return `${f.site}${f.user.trim() ? " · " + f.user.trim().toLowerCase() : ""} · v${f.version} · ${f.length} chars · ${types}${f.avoid ? " · no look-alikes" : ""}`;
+}
+
+function renderPassword() {
+  const el = $("pw");
+  el.classList.remove("placeholder");
+  el.textContent = "";
+  if (hidden) { el.textContent = "•".repeat(currentPassword.length); return; }
+  for (const c of currentPassword) {
+    const span = document.createElement("span");
+    span.textContent = c;
+    if (/[0-9]/.test(c)) span.className = "d";
+    else if (!/[A-Za-z]/.test(c)) span.className = "s";
+    el.appendChild(span);
+  }
+}
+
+function showMessage(text) {
+  const el = $("pw");
+  el.classList.add("placeholder");
+  el.textContent = text;
+  currentPassword = "";
+  ["copy", "hide", "save"].forEach((id) => $(id).disabled = true);
+}
+
+function updateMeter(master) {
+  const m = $("meter");
+  if (!master) { m.textContent = ""; m.className = "meter"; return; }
+  const words = master.trim().split(/\s+/).length;
+  if (master.length < 12) { m.textContent = "Too short: aim for 4+ words."; m.className = "meter weak"; }
+  else if (master.length < 20 && words < 4) { m.textContent = "Okay. Longer is better."; m.className = "meter ok"; }
+  else { m.textContent = "Strong phrase."; m.className = "meter strong"; }
+}
+
+async function update() {
+  const f = readForm();
+  $("length-out").textContent = f.length;
+  $("site-used").textContent = f.site ? `Using: ${f.site}` : "";
+  $("recipe").textContent = f.site ? "Recipe (safe to write down): " + recipeText(f) : "";
+  updateMeter(f.master);
+
+  const id = ++runId;
+  if (f.master) {
+    const kc = await keyCheck(f.master);
+    if (id !== runId) return;
+    $("keycheck-value").textContent = kc;
+    $("keycheck").hidden = false;
+  } else {
+    $("keycheck").hidden = true;
+  }
+
+  if (!f.master) return showMessage("Type your master phrase above to see the password.");
+  if (!f.site) return showMessage("Type a website name to see its password.");
+  if (!Object.values(f.sets).some(Boolean)) return showMessage("Pick at least one kind of character.");
+  if (f.length < Object.values(f.sets).filter(Boolean).length) return showMessage("Make the password longer.");
+
+  $("pw").classList.add("placeholder");
+  $("pw").textContent = "Working…";
+  const pw = await makePassword(f);
+  if (id !== runId) return;   // inputs changed while we were working
+  currentPassword = pw;
+  ["copy", "hide", "save"].forEach((x) => $(x).disabled = false);
+  renderPassword();
+}
+
+function scheduleUpdate() {
+  clearTimeout(timer);
+  timer = setTimeout(update, 250);
+}
+
+function status(text) {
+  $("status").textContent = text;
+  clearTimeout(status.t);
+  status.t = setTimeout(() => $("status").textContent = "", 4000);
+}
+
+function renderSaved() {
+  const data = loadSaved();
+  const list = $("saved-list");
+  list.textContent = "";
+  const names = Object.keys(data).sort();
+  $("saved-empty").hidden = names.length > 0;
+  for (const key of names) {
+    const s = data[key];
+    const li = document.createElement("li");
+    const info = document.createElement("div");
+    info.style.minWidth = "0";
+    const name = document.createElement("div");
+    name.className = "site-name";
+    name.textContent = s.site + (s.user ? ` (${s.user})` : "");
+    const meta = document.createElement("div");
+    meta.className = "site-meta";
+    meta.textContent = recipeText(s).split(" · ").slice(s.user ? 2 : 1).join(" · ");
+    info.append(name, meta);
+    const btns = document.createElement("div");
+    btns.className = "li-btns";
+    const use = document.createElement("button");
+    use.type = "button"; use.textContent = "Use";
+    use.addEventListener("click", () => applySettings(s));
+    const del = document.createElement("button");
+    del.type = "button"; del.textContent = "Forget";
+    del.setAttribute("aria-label", `Forget ${s.site}`);
+    del.addEventListener("click", () => {
+      const d = loadSaved(); delete d[key]; writeSaved(d); renderSaved();
+    });
+    btns.append(use, del);
+    li.append(info, btns);
+    list.appendChild(li);
+  }
+}
+
+function applySettings(s) {
+  $("site").value = s.site;
+  $("user").value = s.user || "";
+  $("version").value = s.version;
+  $("length").value = s.length;
+  $("set-upper").checked = s.sets.upper;
+  $("set-lower").checked = s.sets.lower;
+  $("set-digits").checked = s.sets.digits;
+  $("set-symbols").checked = s.sets.symbols;
+  $("avoid-lookalikes").checked = s.avoid;
+  update();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// Wire up inputs
+["master", "site", "user", "version", "length"].forEach((id) => $(id).addEventListener("input", scheduleUpdate));
+["set-upper", "set-lower", "set-digits", "set-symbols", "avoid-lookalikes"]
+  .forEach((id) => $(id).addEventListener("change", update));
+
+$("site").addEventListener("input", () => {
+  // If this site has saved settings, load them automatically.
+  const saved = loadSaved()[normalizeSite($("site").value) + "|" + $("user").value.trim().toLowerCase()];
+  if (saved) {
+    $("version").value = saved.version;
+    $("length").value = saved.length;
+    $("set-upper").checked = saved.sets.upper;
+    $("set-lower").checked = saved.sets.lower;
+    $("set-digits").checked = saved.sets.digits;
+    $("set-symbols").checked = saved.sets.symbols;
+    $("avoid-lookalikes").checked = saved.avoid;
+  }
+});
+
+$("ver-up").addEventListener("click", () => { $("version").value = Math.min(999, (parseInt($("version").value, 10) || 1) + 1); update(); });
+$("ver-down").addEventListener("click", () => { $("version").value = Math.max(1, (parseInt($("version").value, 10) || 1) - 1); update(); });
+
+$("toggle-master").addEventListener("click", (e) => {
+  const show = $("master").type === "password";
+  $("master").type = show ? "text" : "password";
+  e.currentTarget.textContent = show ? "Hide" : "Show";
+  e.currentTarget.setAttribute("aria-pressed", String(show));
+});
+
+$("hide").addEventListener("click", (e) => {
+  hidden = !hidden;
+  e.currentTarget.textContent = hidden ? "Show" : "Hide";
+  e.currentTarget.setAttribute("aria-pressed", String(hidden));
+  renderPassword();
+});
+
+$("copy").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(currentPassword);
+    status("Copied. Paste it into the website.");
+  } catch {
+    // Clipboard blocked: show the password and select it so the user can copy by hand.
+    hidden = false; $("hide").textContent = "Hide"; renderPassword();
+    const range = document.createRange();
+    range.selectNodeContents($("pw"));
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    status("Copy didn't work here. The password is selected: press Ctrl+C (or long-press and Copy).");
+  }
+});
+
+$("save").addEventListener("click", () => {
+  const f = readForm();
+  const entry = { site: f.site, user: f.user.trim().toLowerCase(), version: f.version,
+                  length: f.length, sets: f.sets, avoid: f.avoid };
+  const data = loadSaved();
+  data[f.site + "|" + entry.user] = entry;
+  status(writeSaved(data) ? `Saved settings for ${f.site}.` : "This browser won't let the page save. Write the recipe line down instead.");
+  renderSaved();
+});
+
+$("lock").addEventListener("click", () => {
+  $("master").value = "";
+  $("master").type = "password";
+  $("toggle-master").textContent = "Show";
+  update();
+  status("Locked. Your phrase was cleared from this page.");
+});
+
+renderSaved();
+update();
+</script>
+</body>
+</html>
